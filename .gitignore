@@ -1,0 +1,4 @@
+*.csv
+*.gif
+reporte_supervivencia.md
+__pycache__/
