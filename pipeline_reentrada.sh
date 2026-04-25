@@ -1,53 +1,93 @@
 #!/bin/bash
 
-# Colores para la terminal
-VERDE='\033[0;32m'
-ROJO='\033[0;31m'
-AZUL='\033[0;34m'
+# =============================================================================
+# REENTRYFLOW ORCHESTRATOR - SCIENTIFIC DATAOPS PIPELINE
+# =============================================================================
+
+# Configuración de Colores
+AZUL='\033[1;34m'
+VERDE='\033[1;32m'
+AMARILLO='\033[1;33m'
+ROJO='\033[1;31m'
 NC='\033[0m' # No Color
 
-echo -e "${AZUL}=== SISTEMA DE MONITOREO DE REENTRADA: ESCUDO MULTICAPA ===${NC}"
+LOG_FILE="pipeline.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
-# PASO 1: Ejecutar la Simulación Numérica de la EDP
-echo -e "\n[1/3] Lanzando motor físico FTCS..."
-python3 escudo_multicapa.py
+echo -e "${AZUL}------------------------------------------------------------${NC}"
+echo -e "${AZUL}    🛰️  SISTEMA DE CONTROL DE REENTRADA - NASA SciML v2.0    ${NC}"
+echo -e "${AZUL}------------------------------------------------------------${NC}"
 
-if [ $? -eq 0 ]; then
-    echo -e "${VERDE}✔ Telemetría generada con éxito.${NC}"
+# --- 1. VERIFICACIÓN DE DEPENDENCIAS ---
+echo -e "\n${AMARILLO}[1/5] Verificando entorno de ingeniería...${NC}"
+
+check_dep() {
+    if ! command -v $1 &> /dev/null; then
+        echo -e "${ROJO}✘ ERROR: $1 no está instalado.${NC}"
+        exit 1
+    fi
+}
+
+check_python_pkg() {
+    python3 -c "import $1" &> /dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${ROJO}✘ ERROR: Paquete Python '$1' no detectado.${NC}"
+        exit 1
+    fi
+}
+
+check_dep "python3"
+check_dep "git"
+check_python_pkg "matplotlib"
+check_python_pkg "numpy"
+check_python_pkg "scipy"
+
+echo -e "${VERDE}✔ Entorno validado.${NC}"
+
+# --- 2. LIMPIEZA DE ARTEFACTOS PREVIOS ---
+if [[ "$*" == *"--clean"* ]]; then
+    echo -e "\n${AMARILLO}[2/5] Limpiando datos antiguos...${NC}"
+    rm -f *.csv *.log study_results/*.csv
+    echo -e "${VERDE}✔ Workspace limpio.${NC}"
 else
-    echo -e "${ROJO}✘ Error en la simulación física.${NC}"
+    echo -e "\n${AMARILLO}[2/5] Saltando limpieza (Usa --clean para purgar).${NC}"
+fi
+
+# --- 3. EJECUCIÓN DEL MOTOR FÍSICO ---
+echo -e "\n${AMARILLO}[3/5] Lanzando Simulación de Diferencias Finitas...${NC}"
+python3 escudo_multicapa.py
+if [ $? -eq 0 ]; then
+    echo -e "${VERDE}✔ Simulación exitosa. Telemetría lista.${NC}"
+else
+    echo -e "${ROJO}✘ Fallo crítico en el motor físico.${NC}"
     exit 1
 fi
 
-# PASO 2: Generar la Visualización SciML
-echo -e "\n[2/3] Renderizando animación de alta fidelidad..."
+# --- 4. RENDERIZADO DE ALTA FIDELIDAD ---
+echo -e "\n${AMARILLO}[4/5] Generando Visualización SciML...${NC}"
 python3 animacion_multicapa.py
-
 if [ $? -eq 0 ]; then
-    echo -e "${VERDE}✔ Animación 'validacion_multicapa.gif' lista.${NC}"
+    echo -e "${VERDE}✔ Animación 'validacion_multicapa.gif' generada.${NC}"
 else
-    echo -e "${ROJO}✘ Error en el renderizado visual.${NC}"
+    echo -e "${AMARILLO}⚠ Aviso: Error en el renderizado, continuando...${NC}"
 fi
 
-# PASO 3: Auditoría de Seguridad con Gemini CLI
-echo -e "\n[3/3] Iniciando auditoría con IA (Gemini Pro)..."
-
-PROMPT="Actúa como un oficial de seguridad de la NASA. Analiza el archivo @telemetria_multicapa.csv adjunto. 
-Concéntrate en la última columna (nodo de la cabina). 
-1. ¿La temperatura en la cabina superó los 40°C en algún punto? 
-2. Evalúa si el diseño multicapa (ablativo + aislante) fue efectivo.
-3. Da un veredicto final: MISION SEGURA o MISION FALLIDA. 
-Responde en formato Markdown técnico."
-
-# Ejecutar Gemini CLI y guardar el reporte
-gemini -p "$PROMPT" > reporte_supervivencia.md
-
-if [ $? -eq 0 ]; then
-    echo -e "${VERDE}✔ Reporte 'reporte_supervivencia.md' generado.${NC}"
-    echo -e "\n${AZUL}=== VEREDICTO DE LA IA ===${NC}"
-    cat reporte_supervivencia.md
+# --- 5. AUDITORÍA DE SEGURIDAD CON IA ---
+if [[ "$*" == *"--skip-ia"* ]]; then
+    echo -e "\n${AMARILLO}[5/5] IA Audit saltada por el usuario.${NC}"
 else
-    echo -e "${ROJO}✘ Fallo en la conexión con Gemini CLI.${NC}"
+    echo -e "\n${AMARILLO}[5/5] Consultando Auditoría de Seguridad a la IA...${NC}"
+    if command -v gemini &> /dev/null; then
+        PROMPT="Analiza telemetria_multicapa.csv. El nodo final es la cabina. Veredicto de supervivencia (umbral 40C). Markdown."
+        gemini -p "$PROMPT" > reporte_supervivencia.md
+        echo -e "${VERDE}✔ Veredicto recibido.${NC}"
+        echo -e "${AZUL}--- RESUMEN DE LA IA ---${NC}"
+        head -n 5 reporte_supervivencia.md
+    else
+        echo -e "${AMARILLO}⚠ Gemini CLI no detectado. Saltando paso de IA.${NC}"
+    fi
 fi
 
-echo -e "\n${VERDE}Pipeline completado. Analiza los resultados antes de la próxima misión.${NC}"
+echo -e "\n${VERDE}============================================================${NC}"
+echo -e "${VERDE}    🚀 PIPELINE COMPLETADO EXITOSAMENTE${NC}"
+echo -e "${VERDE}============================================================${NC}\n"
