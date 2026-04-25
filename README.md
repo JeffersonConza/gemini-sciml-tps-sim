@@ -1,5 +1,9 @@
 # 🛰️ ReentryFlow: SciML Digital Twin para Escudos Térmicos Multicapa
 
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![SciML](https://img.shields.io/badge/Physics-Informed-orange.svg)]()
+
 Sistema de simulación de alta fidelidad y pipeline de **DataOps** para el análisis transitorio de la difusión de calor en escudos de protección térmica (TPS) durante la reentrada atmosférica hipersónica.
 
 ## 📊 Visualización Termodinámica
@@ -57,6 +61,18 @@ $$r = \frac{\alpha_{max} \Delta t}{\Delta x^2} \le 0.45$$
 ---
 
 ## 🏗️ Flujo de Operaciones (SciML & DataOps)
+
+```mermaid
+graph TD
+    A[escudo_multicapa.py] -->|Simulación EDP| B(telemetria_multicapa.csv)
+    B --> C{Pipeline Orchestrator}
+    C --> D[animacion_multicapa.py]
+    C --> E[bucle_cerrado_ia.py]
+    D -->|Renderizado| F[validacion_multicapa.gif]
+    E -->|Analítica IA| G[Gemini Pro Auditor]
+    G -->|Veredicto Técnico| H[reporte_supervivencia.md]
+    H -->|Retroalimentación| A
+```
 
 El proyecto está orquestado por un pipeline de automatización robusto:
 
