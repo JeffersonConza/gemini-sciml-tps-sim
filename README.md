@@ -58,6 +58,12 @@ $$r = \frac{\alpha_{max} \Delta t}{\Delta x^2} \le 0.45$$
 2.  **Aislante Térmico Avanzado:** Núcleo de protección de la cabina.
     *   $\alpha = 0.0005 \, m^2/s$ (Baja difusividad para bloqueo térmico).
 
+### 🎲 Cuantificación de Incertidumbre (Monte Carlo)
+En entornos aeroespaciales reales, las propiedades de los materiales tienen variaciones estadísticas. El sistema incluye un módulo de simulación estocástica que ejecuta cientos de misiones variando aleatoriamente la difusividad térmica ($\alpha$) para calcular la probabilidad de supervivencia.
+<p align="center">
+  <img src="analisis_incertidumbre.png" alt="Análisis de Monte Carlo" width="700"/>
+</p>
+
 ---
 
 ## 🏗️ Flujo de Operaciones (SciML & DataOps)
