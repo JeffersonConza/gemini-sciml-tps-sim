@@ -2,11 +2,31 @@
 
 Sistema de simulación de alta fidelidad y pipeline de **DataOps** para el análisis transitorio de la difusión de calor en escudos de protección térmica (TPS) durante la reentrada atmosférica hipersónica.
 
-![Visualización Térmica](validacion_multicapa.gif)
+## 📊 Visualización Termodinámica
+
+### Perfil Térmico 1D (Estela Dinámica y Monitoreo HUD)
+El modelo evalúa la propagación del plasma a través del escudo térmico multicapa. La capa exterior (ablativa) conduce el calor rápidamente, mientras que el núcleo (aislante) bloquea el flujo térmico.
+<p align="center">
+  <img src="validacion_multicapa.gif" alt="Validación Multicapa 1D" width="800"/>
+</p>
+
+### Mapa de Calor Termográfico 2D
+Expansión bidimensional del modelo térmico, permitiendo simular cómo se propaga la onda de calor lateral y transversalmente a lo largo del fuselaje de la cápsula.
+<p align="center">
+  <img src="validacion_2d.gif" alt="Validación 2D" width="600"/>
+</p>
+
+### Estudio de Sensibilidad Paramétrica
+El optimizador de DataOps barrió el espacio de diseño (proporción Aislante vs Ablativo) para determinar empíricamente qué porcentaje mínimo de material aislante es necesario para evitar que la temperatura de la cabina exceda los 40°C (Límite Vital).
+<p align="center">
+  <img src="optimizacion_diseno.png" alt="Optimización de Diseño" width="700"/>
+</p>
+
+---
 
 ## 🔬 Física y Matemática del Modelo
 
-El núcleo del motor físico resuelve la **Ecuación del Calor Parcial Unidimensional** con difusividad térmica espacialmente heterogénea $\alpha(x)$. Este modelo predice cómo el frente de plasma penetra a través de los materiales compuestos del escudo.
+El núcleo del motor físico resuelve la **Ecuación del Calor Parcial Unidimensional** con difusividad térmica espacialmente heterogénea $\alpha(x)$.
 
 ### Ecuación Diferencial Parcial (EDP)
 $$\frac{\partial T}{\partial t} = \alpha(x) \nabla^2 T$$
@@ -16,48 +36,48 @@ Donde:
 *   $\alpha(x)$: Difusividad térmica local del material ($m^2/s$).
 
 ### Discretización Numérica (Esquema FTCS)
-Para la integración temporal, implementamos el método **Forward-Time Central-Space (FTCS)**, transformando la EDP en un algoritmo iterativo:
+Para la integración temporal, implementamos el método **Forward-Time Central-Space (FTCS)**, transformando la EDP en un algoritmo iterativo explícito:
 
 $$T_{i}^{n+1} = T_{i}^{n} + \frac{\alpha_i \Delta t}{\Delta x^2} (T_{i+1}^{n} - 2T_{i}^{n} + T_{i-1}^{n})$$
 
 ### Criterio de Estabilidad (CFL)
-Para garantizar la convergencia matemática y evitar divergencias numéricas, el paso de tiempo $\Delta t$ se calcula dinámicamente basándose en el **Número de Courant ($r$)** máximo permitido:
+El paso de tiempo $\Delta t$ se calcula dinámicamente basándose en el **Número de Courant ($r$)** máximo permitido para el material de mayor conductividad:
 
 $$r = \frac{\alpha_{max} \Delta t}{\Delta x^2} \le 0.45$$
 
-## 🛡️ Diseño del Escudo Compuesto
+---
 
-A diferencia de los modelos monolíticos, este simulador implementa una arquitectura **Multicapa (Dual-Zone)**:
+## 🛡️ Arquitectura del Escudo (Dual-Zone)
 
-1.  **Capa Ablativa Exterior (Nodos 0-9):** Diseñada para disipar energía inicial.
+1.  **Capa Ablativa Exterior:** Diseñada para disipar la energía cinética inicial.
     *   $\alpha = 0.005 \, m^2/s$ (Alta conductividad transitoria).
-2.  **Aislante Térmico Avanzado (Nodos 10-19):** Núcleo de protección de la cabina.
+2.  **Aislante Térmico Avanzado:** Núcleo de protección de la cabina.
     *   $\alpha = 0.0005 \, m^2/s$ (Baja difusividad para bloqueo térmico).
 
-La interfaz en el **nodo 10** actúa como una barrera física donde se observa el cambio de gradiente térmico en tiempo real.
+---
 
-## 🏗️ Arquitectura del Flujo DataOps
+## 🏗️ Flujo de Operaciones (SciML & DataOps)
 
-El proyecto está orquestado por un pipeline de automatización que integra simulación física, post-procesamiento visual y auditoría inteligente:
+El proyecto está orquestado por un pipeline de automatización robusto:
 
-1.  **Simulación Física (`escudo_multicapa.py`):** Motor de cálculo en Python puro que genera telemetría transitoria en formato CSV.
-2.  **Visualización SciML (`animacion_multicapa.py`):** Generador de animaciones de alta fidelidad con estela termodinámica (colormap `inferno`), HUD dinámico y renderizado de ecuaciones en LaTeX.
-3.  **Auditoría de Seguridad (Gemini CLI):** Agente de IA que analiza los datos de telemetría finales para emitir un veredicto de supervivencia basado en los límites vitales de la tripulación (< 40°C).
+1.  **Motores Físicos (`solver.py`, `escudo_2d.py`):** Motores de cálculo vectorizados en Python puro/NumPy que resuelven la EDP en el espacio-tiempo.
+2.  **DataOps Optimization (`sensitivity_study.py`):** Automatiza corridas masivas variando la arquitectura del TPS y generando la curva de viabilidad térmica.
+3.  **Auditoría Inteligente (Closed-Loop AI):** El script `bucle_cerrado_ia.py` usa Gemini para supervisar y proponer re-diseños automáticos en base a la supervivencia de los astronautas.
+4.  **Generadores Visuales (`animacion_*.py`):** Exportan GIFs optimizados en memoria, renderizando isoclinas, HUDs y contornos en tiempo real.
+
+---
 
 ## 🚀 Ejecución en Linux
 
-Asegúrate de tener instaladas las dependencias de visualización:
+Asegúrate de tener instaladas las dependencias:
 ```bash
-pip install matplotlib numpy pillow
+pip install matplotlib numpy pillow scipy
 ```
 
-Para lanzar el pipeline completo (Simulación + Animación + Reporte IA):
+Ejecuta el pipeline orquestador base:
 ```bash
 chmod +x pipeline_reentrada.sh
 ./pipeline_reentrada.sh
 ```
 
-### Artefactos Generados:
-*   `telemetria_multicapa.csv`: Datos brutos de la simulación.
-*   `validacion_multicapa.gif`: Animación profesional del perfil térmico.
-*   `reporte_supervivencia.md`: Informe técnico y veredicto final emitido por la IA.
+*(O de forma independiente: ejecuta los simuladores de física, seguidos de sus respectivos scripts de visualización, o lanza directamente los bucles de IA/DataOps `python3 sensitivity_study.py`).*
