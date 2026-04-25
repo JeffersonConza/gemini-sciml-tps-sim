@@ -1,82 +1,63 @@
-# 🛡️ AeroShield-SciML: Simulación de Reentrada Atmosférica y Difusión Térmica Multicapa
+# 🛰️ ReentryFlow: SciML Digital Twin para Escudos Térmicos Multicapa
 
-[![SciML](https://img.shields.io/badge/Specialty-SciML-blueviolet)](https://github.com/topics/sciml)
-[![NASA-Inspired](https://img.shields.io/badge/Sector-Aerospace-blue)](https://www.nasa.gov/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Sistema de simulación de alta fidelidad y pipeline de **DataOps** para el análisis transitorio de la difusión de calor en escudos de protección térmica (TPS) durante la reentrada atmosférica hipersónica.
 
-Este repositorio contiene un framework de **Scientific Machine Learning (SciML)** y computación científica diseñado para simular la degradación térmica de un escudo de reentrada aeroespacial. Utiliza una arquitectura de materiales compuestos (Ablativo + Aislante) y un flujo de trabajo de **DataOps** automatizado para la toma de decisiones críticas asistida por IA.
+![Visualización Térmica](validacion_multicapa.gif)
 
----
+## 🔬 Física y Matemática del Modelo
 
-## 🔬 Física y Matemática del Sistema
+El núcleo del motor físico resuelve la **Ecuación del Calor Parcial Unidimensional** con difusividad térmica espacialmente heterogénea $\alpha(x)$. Este modelo predice cómo el frente de plasma penetra a través de los materiales compuestos del escudo.
 
-El núcleo del simulador resuelve la **Ecuación del Calor en 1D** para un medio heterogéneo, donde las propiedades termofísicas varían en función de la profundidad del material $x$.
+### Ecuación Diferencial Parcial (EDP)
+$$\frac{\partial T}{\partial t} = \alpha(x) \nabla^2 T$$
 
-### Ecuación de Gobierno
-La evolución de la temperatura $T$ en el tiempo $t$ está definida por:
+Donde:
+*   $T$: Temperatura en función del tiempo ($t$) y la posición ($x$).
+*   $\alpha(x)$: Difusividad térmica local del material ($m^2/s$).
 
-$$\frac{\partial T}{\partial t} = \alpha(x) \frac{\partial^2 T}{\partial x^2}$$
+### Discretización Numérica (Esquema FTCS)
+Para la integración temporal, implementamos el método **Forward-Time Central-Space (FTCS)**, transformando la EDP en un algoritmo iterativo:
 
-Donde $\alpha(x)$ es la **difusividad térmica**, definida de forma seccionada para el diseño multicapa.
+$$T_{i}^{n+1} = T_{i}^{n} + \frac{\alpha_i \Delta t}{\Delta x^2} (T_{i+1}^{n} - 2T_{i}^{n} + T_{i-1}^{n})$$
 
-### Discretización Numérica (FTCS)
-Implementamos el esquema de **Diferencias Finitas** de tipo *Forward-Time Central-Space* (FTCS). La aproximación de la temperatura en el nodo $i$ para el tiempo $n+1$ se calcula como:
+### Criterio de Estabilidad (CFL)
+Para garantizar la convergencia matemática y evitar divergencias numéricas, el paso de tiempo $\Delta t$ se calcula dinámicamente basándose en el **Número de Courant ($r$)** máximo permitido:
 
-$$T_{i}^{n+1} = T_{i}^{n} + \frac{\alpha_i \Delta t}{\Delta x^2} \left( T_{i+1}^{n} - 2T_{i}^{n} + T_{i-1}^{n} \right)$$
-
-Para garantizar la estabilidad numérica de la solución, el simulador calcula automáticamente el paso de tiempo $\Delta t$ respetando el **Criterio de Estabilidad de Von Neumann**:
-
-$$r = \frac{\alpha_{max} \Delta t}{\Delta x^2} \leq 0.5$$
-
----
+$$r = \frac{\alpha_{max} \Delta t}{\Delta x^2} \le 0.45$$
 
 ## 🛡️ Diseño del Escudo Compuesto
 
-El sistema modela un escudo de 1 metro de espesor con una estrategia de protección dual:
+A diferencia de los modelos monolíticos, este simulador implementa una arquitectura **Multicapa (Dual-Zone)**:
 
-1.  **Capa Ablativa (0.0m - 0.5m):**
-    *   **Difusividad ($\alpha$):** $0.005$
-    *   **Función:** Disipar la carga térmica extrema inicial ($1500^\circ\text{C}$) mediante la absorción de energía.
-2.  **Aislante Térmico (0.5m - 1.0m):**
-    *   **Difusividad ($\alpha$):** $0.0005$ (10 veces menor)
-    *   **Función:** Actuar como barrera pasiva para asegurar que la temperatura en la interfaz de la cabina no comprometa la integridad estructural o humana.
+1.  **Capa Ablativa Exterior (Nodos 0-9):** Diseñada para disipar energía inicial.
+    *   $\alpha = 0.005 \, m^2/s$ (Alta conductividad transitoria).
+2.  **Aislante Térmico Avanzado (Nodos 10-19):** Núcleo de protección de la cabina.
+    *   $\alpha = 0.0005 \, m^2/s$ (Baja difusividad para bloqueo térmico).
 
----
+La interfaz en el **nodo 10** actúa como una barrera física donde se observa el cambio de gradiente térmico en tiempo real.
 
 ## 🏗️ Arquitectura del Flujo DataOps
 
-El proyecto implementa un pipeline de ingeniería de datos y simulación orquestado por un motor de automatización en Bash (`pipeline_reentrada.sh`):
+El proyecto está orquestado por un pipeline de automatización que integra simulación física, post-procesamiento visual y auditoría inteligente:
 
-1.  **Simulación Física (`escudo_multicapa.py`):** Motor numérico que genera telemetría de alta resolución en formato CSV.
-2.  **Visualización SciML (`animacion_multicapa.py`):** Generador de assets visuales que renderiza la difusión térmica, incluyendo un HUD dinámico y la representación de la EDP en tiempo real.
-3.  **Auditoría de Seguridad IA (Gemini CLI):** Un agente de IA actúa como Oficial de Seguridad de la NASA, analizando los datos generados para emitir un veredicto de "Misión Segura" o "Falla Crítica" basado en los umbrales térmicos de la cabina ($<40^\circ\text{C}$).
-
----
+1.  **Simulación Física (`escudo_multicapa.py`):** Motor de cálculo en Python puro que genera telemetría transitoria en formato CSV.
+2.  **Visualización SciML (`animacion_multicapa.py`):** Generador de animaciones de alta fidelidad con estela termodinámica (colormap `inferno`), HUD dinámico y renderizado de ecuaciones en LaTeX.
+3.  **Auditoría de Seguridad (Gemini CLI):** Agente de IA que analiza los datos de telemetría finales para emitir un veredicto de supervivencia basado en los límites vitales de la tripulación (< 40°C).
 
 ## 🚀 Ejecución en Linux
 
-### Requisitos Previos
-Asegúrate de tener instalado Python 3 y las dependencias necesarias:
+Asegúrate de tener instaladas las dependencias de visualización:
 ```bash
-pip install numpy matplotlib
+pip install matplotlib numpy pillow
 ```
 
-### Lanzar el Pipeline Completo
-El orquestador gestiona la ejecución secuencial, la validación de errores y la auditoría final:
-
+Para lanzar el pipeline completo (Simulación + Animación + Reporte IA):
 ```bash
-# Otorgar permisos de ejecución
 chmod +x pipeline_reentrada.sh
-
-# Ejecutar el sistema de monitoreo
 ./pipeline_reentrada.sh
 ```
 
-### Resultados Generados
-*   `telemetria_multicapa.csv`: Datos crudos de la evolución térmica.
-*   `validacion_multicapa.gif`: Animación profesional de la simulación.
-*   `reporte_supervivencia.md`: Análisis técnico y veredicto emitido por la IA.
-
----
-
-> **Nota del Ingeniero:** Este sistema demuestra cómo la integración de métodos numéricos tradicionales con orquestación moderna y Large Language Models permite crear gemelos digitales robustos para entornos de misión crítica.
+### Artefactos Generados:
+*   `telemetria_multicapa.csv`: Datos brutos de la simulación.
+*   `validacion_multicapa.gif`: Animación profesional del perfil térmico.
+*   `reporte_supervivencia.md`: Informe técnico y veredicto final emitido por la IA.
